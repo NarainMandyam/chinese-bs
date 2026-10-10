@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a2b25">
+<meta name="description" content="Chinese BS: the bluffing card game. Start a table and text your friends the link.">
+<meta property="og:title" content="Chinese BS">
+<meta property="og:description" content="Join my table. Open the link, type a name, play. No sign-up.">
+<title>Chinese BS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Figtree:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+
+/* Layout: one phone-first column on a felt table — seats, pile, the BS button, your move, your hand */
+:root{
+  --felt:#11433a; --felt-deep:#0a2b25; --rail:#24604f; --panel:rgba(0,0,0,.22);
+  --ink:#eef4ef; --muted:#9fbdb4;
+  --card:#f8f4ea; --card-ink:#1c2420; --suit-red:#c4382f; --back:#7a2a24; --back-2:#93362e;
+  --brass:#f2c14e; --brass-ink:#2a1e00; --alert:#ff8a6b; --ok:#86d9ab;
+  --f-display:"Bowlby One SC","Arial Black",Impact,sans-serif;
+  --f-body:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--felt-deep)}
+body{color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  background:radial-gradient(130% 70% at 50% 0%,var(--felt) 0%,var(--felt-deep) 75%) fixed,var(--felt-deep)}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+.wrap{max-width:680px;margin:0 auto;padding-inline:16px;padding-block:14px 48px;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h1{font-family:var(--f-display);font-size:28px;line-height:1;margin:0;letter-spacing:.01em}
+h1 b{color:var(--brass);font-weight:400}
+.hright{display:flex;gap:8px;align-items:center}
+.pill{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px;border:1px solid var(--rail);color:var(--muted)}
+.pill.hot{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.panel{background:var(--panel);border:1px solid var(--rail);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.label{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--rail);background:transparent;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;min-height:44px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.btn.warn{border-color:var(--alert);color:var(--alert)}
+.btn.armed{background:var(--alert);color:var(--brass-ink);border-color:var(--alert)}
+.btn.small{min-height:34px;padding:6px 10px;font-size:13px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:focus-visible,.card:focus-visible,input:focus-visible,.seg button:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+input[type=text]{background:var(--felt-deep);border:1px solid var(--rail);border-radius:10px;color:var(--ink);padding:10px 12px;font:inherit;min-height:44px;flex:1;min-width:0}
+.grow{flex:1;min-width:0}
+
+/* seats */
+.seats{display:flex;flex-wrap:wrap;gap:8px}
+.seat{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;border:1px solid var(--rail);background:var(--panel)}
+.seat.turn{border-color:var(--brass);box-shadow:inset 0 0 0 1px var(--brass)}
+.seat .cnt{min-width:26px;height:34px;border-radius:5px;background:repeating-linear-gradient(45deg,var(--back) 0 4px,var(--back-2) 4px 8px);border:2px solid var(--card);
+  display:grid;place-items:center;font-weight:800;font-size:13px;font-variant-numeric:tabular-nums;color:var(--card);padding:0 3px}
+.seat .nm{font-weight:700}
+.seat .tag{font-size:11px;color:var(--muted);font-weight:600}
+.seat .tag.hot{color:var(--brass)}
+
+/* pile */
+.table{display:flex;gap:16px;align-items:center}
+.stack{position:relative;width:64px;height:88px;flex:none}
+.stack i{position:absolute;inset:0;border-radius:7px;background:repeating-linear-gradient(45deg,var(--back) 0 5px,var(--back-2) 5px 10px);border:2px solid var(--card)}
+.stack i:nth-child(1){transform:rotate(-8deg)}
+.stack i:nth-child(2){transform:rotate(5deg)}
+.stack .n{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-display);font-size:24px;color:var(--card);text-shadow:0 2px 0 rgba(0,0,0,.4)}
+.stack.empty i{background:none;border:2px dashed var(--rail)}
+.stack.empty i:nth-child(n+2){display:none}
+.stack.empty .n{color:var(--muted);text-shadow:none}
+.claim{min-width:0}
+.claim .big{font-family:var(--f-display);font-size:34px;line-height:1.05;color:var(--brass);text-wrap:balance}
+.claim .sub{color:var(--muted)}
+.reveal{border-top:1px solid var(--rail);padding-top:12px;display:flex;flex-direction:column;gap:8px}
+.verdict{font-weight:800}
+.verdict.lie{color:var(--alert)}
+.verdict.truth{color:var(--ok)}
+
+.bs{font-family:var(--f-display);font-size:30px;letter-spacing:.03em;background:var(--brass);color:var(--brass-ink);border:none;border-radius:14px;
+  padding:14px;cursor:pointer;width:100%;box-shadow:0 4px 0 #a07a1c;line-height:1.1}
+.bs small{display:block;font-family:var(--f-body);font-size:13px;font-weight:700;letter-spacing:0;margin-top:4px}
+.bs:active{transform:translateY(3px);box-shadow:0 1px 0 #a07a1c}
+.bs:disabled{opacity:.5}
+
+/* cards */
+.hand{display:flex;flex-wrap:wrap;gap:6px}
+.card{width:50px;height:72px;border-radius:7px;background:var(--card);color:var(--card-ink);position:relative;border:none;padding:0;flex:none;
+  font-family:var(--f-body);font-weight:800;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.35);transition:transform .12s}
+.card.static{cursor:default}
+.card .r{position:absolute;top:4px;left:6px;font-size:17px;line-height:1}
+.card .s{position:absolute;bottom:5px;right:6px;font-size:19px;line-height:1}
+.card.red{color:var(--suit-red)}
+.card .w{position:absolute;left:0;right:0;top:41%;text-align:center;font-size:8px;letter-spacing:.12em;color:var(--card-ink);opacity:.55}
+.card.joker .r{font-size:11px;letter-spacing:.04em;top:6px}
+.card.sel{transform:translateY(-8px);outline:3px solid var(--brass);outline-offset:1px}
+.card.hit{box-shadow:0 0 0 3px var(--ok)}
+.card.miss{box-shadow:0 0 0 3px var(--alert)}
+.handhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+
+.ranks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.ranks button{min-height:44px;border-radius:10px;border:1px solid var(--rail);background:transparent;font-weight:800;font-size:17px;cursor:pointer}
+.ranks button.on{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+
+.seg{display:inline-flex;border:1px solid var(--rail);border-radius:10px;overflow:hidden}
+.seg button{border:none;background:transparent;padding:8px 14px;font-weight:700;cursor:pointer;min-height:40px}
+.seg button.on{background:var(--brass);color:var(--brass-ink)}
+.seg button:disabled{cursor:default}
+.plist{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.plist li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--panel)}
+
+.win{font-family:var(--f-display);font-size:38px;line-height:1.05;color:var(--brass);text-wrap:balance}
+details summary{cursor:pointer;font-weight:700}
+details ul,details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.log li{color:var(--muted)}
+.log li:first-child{color:var(--ink)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 32px);
+  background:var(--card);color:var(--card-ink);font-weight:700;padding:10px 16px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:5}
+@media (prefers-reduced-motion:reduce){.card,.bs{transition:none}}
+
+.hero{gap:14px}
+.lede{font-size:18px;font-weight:600;text-wrap:balance}
+.btn.big{font-size:18px;min-height:54px}
+.notice{border-color:var(--brass)}
+.hostnote{margin:0;font-size:13px;text-align:center}
+#linkInput{font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast" hidden></div>
+<script src="mqtt.min.js"></script>
+<script>
+(function(){
+/*ENGINE-START*/
+var RANKS=['A','2','3','4','5','6','7','8','9','10'];
+var FACES=['J','Q','K'];
+var ORDER={A:1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,J:11,Q:12,K:13,X:14};
+var ONE={A:'Ace','2':'Two','3':'Three','4':'Four','5':'Five','6':'Six','7':'Seven','8':'Eight','9':'Nine','10':'Ten'};
+var MANY={A:'Aces','2':'Twos','3':'Threes','4':'Fours','5':'Fives','6':'Sixes','7':'Sevens','8':'Eights','9':'Nines','10':'Tens'};
+function rk(c){return c.split('-')[0]}
+function suitOf(c){return c.split('-')[1]}
+function isWild(c){var r=rk(c);return r==='J'||r==='Q'||r==='K'||r==='X'}
+function fits(c,r){return rk(c)===r||isWild(c)}
+function claimText(n,r){return n+' '+(n===1?ONE[r]:MANY[r])}
+function sortCards(a){return a.slice().sort(function(x,y){return (ORDER[rk(x)]-ORDER[rk(y)])||(x<y?-1:x>y?1:0)})}
+function randInt(n){var b=new Uint32Array(1);crypto.getRandomValues(b);return b[0]%n}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=randInt(i+1),t=a[i];a[i]=a[j];a[j]=t}return a}
+function buildDeck(s){
+  var d=[];
+  for(var k=0;k<s.decks;k++){
+    ['S','H','D','C'].forEach(function(su){RANKS.concat(FACES).forEach(function(r){d.push(r+'-'+su+'-'+k)})});
+    if(s.jokers){d.push('X-R-'+k);d.push('X-B-'+k)}
+  }
+  return d;
+}
+function freshState(hostId){
+  return {v:2,seq:0,hostId:hostId||'',acks:[],phase:'lobby',settings:{decks:1,jokers:true},players:[],hands:{},turn:0,
+    claim:null,pile:[],last:null,out:null,winner:null,reveal:null,log:[]};
+}
+function GameError(m){var e=new Error(m);e.game=true;return e}
+function idx(st,id){for(var i=0;i<st.players.length;i++){if(st.players[i].id===id)return i}return -1}
+function nameOf(st,id){var i=idx(st,id);return i<0?'Someone':st.players[i].name}
+function addLog(st,t){st.log.push(t);if(st.log.length>40)st.log.splice(0,st.log.length-40)}
+function cleanName(s){return String(s||'').replace(/\s+/g,' ').trim().slice(0,16)}
+function needSeat(st,me){if(idx(st,me)<0)throw GameError("You're not at the table.")}
+function needLobby(st){if(st.phase!=='lobby')throw GameError('That only works between games.')}
+function needPlay(st){if(st.phase!=='play')throw GameError('No hand is being played right now.')}
+function curId(st){return st.players[st.turn].id}
+function clearRound(st){st.claim=null;st.pile=[];st.last=null}
+
+var E={
+  join:function(st,me,nm){
+    nm=cleanName(nm);
+    if(!nm)throw GameError('Type a name first.');
+    var taken=st.players.some(function(p){return p.id!==me&&p.name.toLowerCase()===nm.toLowerCase()});
+    if(taken)throw GameError('Someone already has that name.');
+    var i=idx(st,me);
+    if(i>=0){st.players[i].name=nm;return}
+    if(st.phase!=='lobby')throw GameError('A game is running. You can join the next one.');
+    if(st.players.length>=8)throw GameError('The table is full (8 players max).');
+    st.players.push({id:me,name:nm});
+    addLog(st,nm+' sat down.');
+  },
+  leave:function(st,me){
+    needLobby(st);needSeat(st,me);
+    var nm=nameOf(st,me);
+    st.players=st.players.filter(function(p){return p.id!==me});
+    addLog(st,nm+' left the table.');
+  },
+  remove:function(st,me,id){
+    needLobby(st);needSeat(st,me);
+    if(idx(st,id)<0)return;
+    var nm=nameOf(st,id);
+    st.players=st.players.filter(function(p){return p.id!==id});
+    addLog(st,nm+' was removed from the table.');
+  },
+  option:function(st,me,key,val){
+    needLobby(st);needSeat(st,me);
+    if(key==='decks'){if(val!==1&&val!==2)throw GameError('Pick 1 or 2 decks.');st.settings.decks=val}
+    else if(key==='jokers'){st.settings.jokers=!!val}
+    else throw GameError('Unknown option.');
+  },
+  start:function(st,me){
+    if(st.phase==='play')throw GameError('A hand is already being played.');
+    needSeat(st,me);
+    var n=st.players.length;
+    if(n<2)throw GameError('You need at least 2 players.');
+    var deck=shuffle(buildDeck(st.settings));
+    var hands={};
+    st.players.forEach(function(p){hands[p.id]=[]});
+    var s0=randInt(n);
+    deck.forEach(function(c,i){hands[st.players[(s0+i)%n].id].push(c)});
+    st.hands=hands;st.turn=randInt(n);clearRound(st);
+    st.out=null;st.winner=null;st.reveal=null;st.phase='play';st.log=[];
+    addLog(st,'Cards dealt ('+deck.length+'). '+nameOf(st,curId(st))+' leads.');
+  },
+  play:function(st,me,cards,rank){
+    needPlay(st);needSeat(st,me);
+    if(st.out)throw GameError(nameOf(st,st.out)+' is out of cards. Call BS or accept.');
+    if(curId(st)!==me)throw GameError("It's not your turn.");
+    if(!Array.isArray(cards)||cards.length===0)throw GameError('Pick at least one card.');
+    var hand=st.hands[me];
+    var seen={};
+    cards.forEach(function(c){
+      if(seen[c])throw GameError('Same card picked twice.');
+      seen[c]=1;
+      if(hand.indexOf(c)<0)throw GameError("That card isn't in your hand.");
+    });
+    if(st.claim===null){
+      if(RANKS.indexOf(rank)<0)throw GameError('Pick the rank you are calling (Ace to 10).');
+      st.claim=rank;
+    }
+    st.hands[me]=hand.filter(function(c){return !seen[c]});
+    st.pile=st.pile.concat(cards);
+    st.last={by:me,cards:cards.slice(),rank:st.claim,n:cards.length};
+    st.reveal=null;
+    addLog(st,nameOf(st,me)+' played '+claimText(cards.length,st.claim)+'.');
+    if(st.hands[me].length===0){st.out=me;addLog(st,nameOf(st,me)+' is out of cards!')}
+    st.turn=(st.turn+1)%st.players.length;
+  },
+  concede:function(st,me){
+    needPlay(st);needSeat(st,me);
+    if(st.out)throw GameError(nameOf(st,st.out)+' is out of cards. Call BS or accept.');
+    if(curId(st)!==me)throw GameError("It's not your turn.");
+    if(!st.last||st.pile.length===0)throw GameError('There is nothing to concede. You lead.');
+    var k=st.pile.length;
+    st.hands[me]=st.hands[me].concat(st.pile);
+    clearRound(st);st.reveal=null;
+    addLog(st,nameOf(st,me)+' conceded, took '+k+' cards, and leads.');
+  },
+  bs:function(st,me){
+    needPlay(st);needSeat(st,me);
+    var last=st.last;
+    if(!last)throw GameError('There is no play to call.');
+    if(last.by===me)throw GameError("You can't call BS on yourself.");
+    var lied=!last.cards.every(function(c){return fits(c,last.rank)});
+    var loser=lied?last.by:me;
+    var k=st.pile.length;
+    st.hands[loser]=st.hands[loser].concat(st.pile);
+    st.reveal={by:me,target:last.by,cards:last.cards.slice(),rank:last.rank,lied:lied,loser:loser,took:k};
+    clearRound(st);
+    addLog(st,nameOf(st,me)+' called BS on '+nameOf(st,last.by)+'. '+(lied?'Lie!':'Truth.')+' '+nameOf(st,loser)+' took '+k+' cards.');
+    if(st.out){
+      if(lied){st.out=null;st.turn=idx(st,me);addLog(st,nameOf(st,me)+' leads.')}
+      else{st.winner=st.out;st.out=null;st.phase='over';addLog(st,nameOf(st,st.winner)+' wins!')}
+      return;
+    }
+    st.turn=idx(st,lied?me:last.by);
+    addLog(st,nameOf(st,curId(st))+' leads.');
+  },
+  accept:function(st,me){
+    needPlay(st);needSeat(st,me);
+    if(!st.out)throw GameError('Nobody is out of cards yet.');
+    if(curId(st)!==me)throw GameError("It's not your call.");
+    st.winner=st.out;st.out=null;st.phase='over';st.reveal=null;
+    addLog(st,nameOf(st,me)+' accepted. '+nameOf(st,st.winner)+' wins!');
+  },
+  reset:function(st,me){
+    needSeat(st,me);
+    st.phase='lobby';st.hands={};clearRound(st);st.out=null;st.winner=null;st.reveal=null;st.turn=0;st.log=[];
+    addLog(st,nameOf(st,me)+' ended the game.');
+  }
+};
+/*ENGINE-END*/
+var NS='chinese-bs-v1';
+var BROKERS=window.CBS_BROKERS||['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt'];
+var ACTIONS=['join','leave','remove','option','start','play','concede','bs','accept','reset'];
+var CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function rid(n){var b=new Uint32Array(n),s='';crypto.getRandomValues(b);for(var i=0;i<n;i++)s+=CODE_CHARS[b[i]%CODE_CHARS.length];return s}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function myId(){var id=lsGet('cbs-pid');if(!id||!/^[A-Z0-9]{8,20}$/.test(id)){id=rid(12);lsSet('cbs-pid',id)}return id}
+
+var S={screen:'home',room:null,broker:0,me:myId(),st:null,client:null,connected:false,everConnected:false,synced:false,
+  isHost:false,creating:false,pending:null,rejected:{},lastBeat:0,enteredAt:0,hostOff:false,notFound:false,noServer:false,
+  sel:[],rank:null,armed:null,armTimer:null,nameDraft:lsGet('cbs-name')||'',codeDraft:'',rulesOpen:false,logOpen:false,
+  toastTimer:null,wake:null,timers:[]};
+
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function base(){return NS+'/'+S.room}
+function roomHash(){return S.room+(S.broker?'-'+(S.broker+1):'')}
+function roomUrl(){return location.origin+location.pathname+'#'+roomHash()}
+
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg;t.hidden=false;
+  clearTimeout(S.toastTimer);
+  S.toastTimer=setTimeout(function(){t.hidden=true},3800);
+}
+function arm(key){
+  S.armed=key;clearTimeout(S.armTimer);
+  S.armTimer=setTimeout(function(){S.armed=null;render()},3500);
+  render();
+}
+async function wake(){
+  try{
+    if('wakeLock' in navigator&&document.visibilityState==='visible'&&!S.wake){
+      S.wake=await navigator.wakeLock.request('screen');
+      S.wake.addEventListener('release',function(){S.wake=null});
+    }
+  }catch(e){S.wake=null}
+}
+
+/* ---------- connection ---------- */
+function clearTimers(){S.timers.forEach(clearTimeout);S.timers=[]}
+function later(fn,ms){S.timers.push(setTimeout(fn,ms))}
+
+function enterRoom(code,brokerIdx,creating){
+  if(S.client){try{S.client.end(true)}catch(e){}S.client=null}
+  clearTimers();
+  if(S.pending){clearInterval(S.pending.timer);S.pending=null}
+  S.screen='room';S.room=code;S.broker=brokerIdx;S.creating=creating;S.st=null;S.isHost=false;S.connected=false;
+  S.everConnected=false;S.synced=false;S.notFound=false;S.noServer=false;S.enteredAt=Date.now();S.lastBeat=0;
+  S.sel=[];S.rank=null;S.rejected={};
+  if(creating){
+    var st=freshState(S.me);
+    S.st=st;S.isHost=true;S.synced=true;
+  }
+  if(location.hash.slice(1)!==roomHash())history.replaceState(null,'','#'+roomHash());
+  render();
+  if(typeof mqtt==='undefined'){S.noServer=true;render();return}
+  var c=mqtt.connect(BROKERS[brokerIdx],{clientId:'cbs_'+rid(10),clean:true,reconnectPeriod:2000,connectTimeout:10000,keepalive:30,protocolVersion:4});
+  S.client=c;
+  c.on('connect',function(){
+    if(S.client!==c)return;
+    S.connected=true;S.everConnected=true;S.noServer=false;
+    if(!S.creating)S.synced=false;
+    c.subscribe([base()+'/state',base()+'/act',base()+'/note/'+S.me],{qos:1},function(){
+      if(S.client!==c)return;
+      if(S.creating){S.creating=false;publishState()}
+      setTimeout(function(){if(S.client===c)S.synced=true},2500);
+    });
+    render();
+  });
+  c.on('close',function(){if(S.client!==c)return;if(S.connected){S.connected=false;render()}});
+  c.on('message',function(topic,payload,packet){
+    if(S.client!==c)return;
+    var m;try{m=JSON.parse(payload.toString())}catch(e){return}
+    if(topic===base()+'/state')onState(m,packet&&packet.retain);
+    else if(topic===base()+'/act'){if(S.isHost&&S.synced)handleAction(m)}
+    else if(topic===base()+'/note/'+S.me)onNote(m);
+  });
+  // The person who starts a table falls back to the second server if the first is unreachable.
+  later(function(){
+    if(S.client!==c||S.everConnected)return;
+    if(creating&&brokerIdx+1<BROKERS.length){var st=S.st;enterRoom(code,brokerIdx+1,true);if(st)S.st=st;render();return}
+    S.noServer=true;render();
+  },11000);
+  if(!creating)later(function(){if(S.client===c&&S.everConnected&&!S.st){S.notFound=true;render()}},9000);
+}
+
+function publishState(){
+  if(!S.client||!S.st)return;
+  S.client.publish(base()+'/state',JSON.stringify(S.st),{qos:1,retain:true});
+}
+
+function validState(st){return st&&typeof st==='object'&&st.v===2&&typeof st.seq==='number'&&Array.isArray(st.players)&&typeof st.hostId==='string'}
+
+function onState(st,retained){
+  if(!validState(st))return;
+  if(!retained)S.lastBeat=Date.now();
+  if(S.st&&st.seq<=S.st.seq){updateHostOff();return}
+  S.st=st;S.isHost=st.hostId===S.me;S.notFound=false;
+  if(S.isHost)S.synced=true;
+  checkPending();prune();updateHostOff();render();
+}
+
+/* ---------- moves ---------- */
+function applyAction(a){
+  if(!a||typeof a.id!=='string'||typeof a.from!=='string'||!/^[A-Z0-9]{8,20}$/.test(a.from)||ACTIONS.indexOf(a.type)<0||!Array.isArray(a.args))return 'That move did not work.';
+  if(!S.st)return 'The table is still loading.';
+  if(S.st.acks.indexOf(a.id)>=0)return null;
+  if(S.rejected[a.id])return S.rejected[a.id];
+  var st=clone(S.st);
+  try{
+    if(a.seq!=null&&st.seq!==a.seq)throw GameError('Someone moved first. The table has updated.');
+    E[a.type].apply(null,[st,a.from].concat(a.args));
+  }catch(e){
+    var msg=e&&e.game?e.message:'That move did not work.';
+    if(!(e&&e.game))console.warn(e);
+    S.rejected[a.id]=msg;return msg;
+  }
+  st.seq++;st.acks=st.acks.concat([a.id]).slice(-40);
+  S.st=st;publishState();prune();render();
+  return null;
+}
+function handleAction(a){
+  var err=applyAction(a);
+  if(err&&a&&typeof a.from==='string'&&/^[A-Z0-9]{8,20}$/.test(a.from)&&a.from!==S.me&&S.client){
+    S.client.publish(base()+'/note/'+a.from,JSON.stringify({actId:a.id,text:err}),{qos:1});
+  }
+}
+function send(type,args,guard,onOk){
+  if(S.pending||!S.st)return;
+  var a={id:rid(12),from:S.me,type:type,args:args||[],seq:guard==null?null:guard};
+  S.pending={a:a,t0:Date.now(),onOk:onOk,timer:null};
+  if(S.isHost){finish(a.id,applyAction(a));return}
+  var pub=function(){if(S.client)S.client.publish(base()+'/act',JSON.stringify(a),{qos:1})};
+  pub();
+  S.pending.timer=setInterval(function(){
+    if(!S.pending||S.pending.a.id!==a.id)return;
+    if(Date.now()-S.pending.t0>45000){finish(a.id,"Couldn't reach the host's phone. Try again.");return}
+    pub();
+  },3000);
+  render();
+}
+function finish(id,err){
+  var p=S.pending;
+  if(!p||p.a.id!==id)return;
+  clearInterval(p.timer);S.pending=null;
+  if(err)toast(err);else if(p.onOk)p.onOk();
+  prune();render();
+}
+function checkPending(){if(S.pending&&S.st&&S.st.acks&&S.st.acks.indexOf(S.pending.a.id)>=0)finish(S.pending.a.id,null)}
+function onNote(m){if(m&&S.pending&&m.actId===S.pending.a.id)finish(m.actId,String(m.text||'That move did not work.'))}
+
+function takeOver(){
+  if(!S.st)return;
+  var st=clone(S.st);
+  st.hostId=S.me;st.seq++;
+  addLog(st,nameOf(st,S.me)+"'s phone is now running the table.");
+  S.st=st;S.isHost=true;S.synced=true;S.hostOff=false;
+  publishState();render();
+}
+function updateHostOff(){
+  var off=!!(S.st&&!S.isHost&&S.everConnected&&Date.now()-Math.max(S.lastBeat,S.enteredAt)>25000);
+  if(off!==S.hostOff){S.hostOff=off;render()}
+}
+setInterval(function(){
+  if(S.screen!=='room')return;
+  if(S.isHost&&S.connected&&S.synced)publishState();
+  updateHostOff();
+},8000);
+
+function prune(){
+  var h=(S.st&&S.st.hands&&S.st.hands[S.me])||[];
+  S.sel=S.sel.filter(function(c){return h.indexOf(c)>=0});
+  if(!S.st||S.st.phase!=='play'||S.st.claim!==null)S.rank=null;
+}
+
+/* ---------- views ---------- */
+function cardHTML(c,opts){
+  opts=opts||{};
+  var r=rk(c),s=suitOf(c);
+  var red=(s==='H'||s==='D'||(r==='X'&&s==='R'));
+  var sym={S:'♠',H:'♥',D:'♦',C:'♣',R:'★',B:'★'}[s];
+  var cls='card'+(red?' red':'')+(r==='X'?' joker':'')+(opts.sel?' sel':'')+(opts.static?' static':'')+(opts.mark?' '+opts.mark:'');
+  var label=(r==='X'?'Joker':(ONE[r]||{J:'Jack',Q:'Queen',K:'King'}[r]))+(isWild(c)?' (wild)':'');
+  var inner='<span class="r">'+(r==='X'?'JOKER':r)+'</span>'+(isWild(c)?'<span class="w">WILD</span>':'')+'<span class="s">'+sym+'</span>';
+  if(opts.static)return '<div class="'+cls+'" role="img" aria-label="'+esc(label)+'">'+inner+'</div>';
+  return '<button class="'+cls+'" data-a="card" data-c="'+esc(c)+'" aria-pressed="'+(opts.sel?'true':'false')+'" aria-label="'+esc(label)+'">'+inner+'</button>';
+}
+
+function header(st){
+  var pill='';
+  if(S.screen==='room'){
+    pill='<span class="pill">Table '+esc(S.room)+'</span>';
+    if(st&&st.phase==='play'){
+      var cid=curId(st);
+      if(st.out)pill='<span class="pill hot">Last call</span>';
+      else if(cid===S.me)pill='<span class="pill hot">Your turn</span>';
+      else pill='<span class="pill">'+esc(nameOf(st,cid))+"'s turn</span>";
+    }else if(st&&st.phase==='over')pill='<span class="pill">Game over</span>';
+  }
+  var end='';
+  if(st&&st.phase==='play'&&idx(st,S.me)>=0){
+    end=S.armed==='end'
+      ?'<button class="btn small armed" data-a="end">Tap again to end for everyone</button>'
+      :'<button class="btn small" data-a="end">End game</button>';
+  }
+  return '<header><h1>Chinese <b>BS</b></h1><div class="hright">'+pill+end+'</div></header>';
+}
+
+function rulesHTML(){
+  return '<details class="panel" data-d="rules"'+(S.rulesOpen?' open':'')+'><summary>How to play</summary><ol>'+
+    '<li>Get rid of all your cards. First one out wins.</li>'+
+    '<li>The leader plays any number of cards face down and calls a rank, Ace (1) to 10.</li>'+
+    '<li>Everyone after must claim that same rank. On your turn: play one or more cards (lying is allowed), <b>concede</b> (take the whole pile, then you lead), or call BS.</li>'+
+    '<li>Jacks, Queens, Kings and Jokers are wild. They always count as the called rank.</li>'+
+    '<li>Anyone can call BS on the last play. If it was a lie, the liar takes the pile and the caller leads. If it was true, the caller takes the pile and the player who was called leads.</li>'+
+    '<li>When someone plays their last cards, the next player either calls BS or accepts. Anyone else can call BS first. If nobody catches a lie, they win.</li>'+
+    '</ol></details>';
+}
+
+function homeHTML(){
+  return header(null)+
+    '<section class="panel hero"><div class="lede">The bluffing card game, one table, everyone on their own phone.</div>'+
+    '<button class="btn primary big" data-a="create">Start a table</button>'+
+    '<span class="muted">You get a link to text your friends. No sign-up.</span></section>'+
+    '<section class="panel"><div class="label">Got a code?</div><div class="row">'+
+    '<input type="text" id="codeInput" maxlength="9" placeholder="e.g. K7QP2M" autocomplete="off" autocapitalize="characters" value="'+esc(S.codeDraft)+'">'+
+    '<button class="btn" data-a="joincode">Join</button></div></section>'+rulesHTML();
+}
+
+function shareHTML(){
+  var url=roomUrl();
+  return '<section class="panel"><div class="label">Invite friends</div><div>Text them this link. They open it, type a name, and sit down.</div>'+
+    '<div class="row"><input type="text" id="linkInput" readonly value="'+esc(url)+'" aria-label="Table link">'+
+    (navigator.share?'<button class="btn primary" data-a="share">Share</button>':'')+
+    '<button class="btn" data-a="copy">Copy</button></div></section>';
+}
+
+function lobbyHTML(st){
+  var me=idx(st,S.me),seated=me>=0,n=st.players.length,busy=!!S.pending;
+  var h='<section class="panel">';
+  if(!seated){
+    h+='<div class="label">Join the table</div><div class="row"><input type="text" id="nameInput" maxlength="16" placeholder="Your name" autocomplete="off" value="'+esc(S.nameDraft)+'">'+
+      '<button class="btn primary" data-a="join"'+(busy?' disabled':'')+'>Sit down</button></div>';
+  }else{
+    h+='<div class="row"><span class="grow">You\'re in as <b>'+esc(st.players[me].name)+'</b>.</span><button class="btn small" data-a="leave"'+(busy?' disabled':'')+'>Leave</button></div>';
+  }
+  h+='<div class="label">At the table ('+n+'/8)</div>';
+  if(n===0)h+='<p class="muted" style="margin:0">Nobody yet. Sit down, then send the link to your friends.</p>';
+  else{
+    h+='<ul class="plist">'+st.players.map(function(p){
+      var you=p.id===S.me;
+      return '<li><span>'+esc(p.name)+(you?' <span class="muted">(you)</span>':'')+(p.id===st.hostId?' <span class="muted">· host</span>':'')+'</span>'+
+        (seated&&!you?'<button class="btn small" data-a="remove" data-id="'+esc(p.id)+'" aria-label="Remove '+esc(p.name)+'"'+(busy?' disabled':'')+'>Remove</button>':'')+'</li>';
+    }).join('')+'</ul>';
+  }
+  var dis=seated&&!busy?'':' disabled';
+  var deckSize=st.settings.decks*(52+(st.settings.jokers?2:0));
+  h+='<div class="label">Deck</div><div class="row">'+
+    '<div class="seg" role="group" aria-label="Number of decks"><button data-a="opt" data-k="decks" data-v="1" class="'+(st.settings.decks===1?'on':'')+'"'+dis+'>1 deck</button><button data-a="opt" data-k="decks" data-v="2" class="'+(st.settings.decks===2?'on':'')+'"'+dis+'>2 decks</button></div>'+
+    '<div class="seg" role="group" aria-label="Jokers"><button data-a="opt" data-k="jokers" data-v="1" class="'+(st.settings.jokers?'on':'')+'"'+dis+'>Jokers in</button><button data-a="opt" data-k="jokers" data-v="0" class="'+(!st.settings.jokers?'on':'')+'"'+dis+'>No jokers</button></div></div>';
+  h+='<p class="muted" style="margin:0">'+deckSize+' cards'+(n>=2?', about '+Math.floor(deckSize/n)+' each':'')+'. J, Q, K'+(st.settings.jokers?' and Jokers':'')+' are wild.</p>';
+  if(seated){
+    h+='<button class="btn primary" data-a="start"'+(n<2||busy?' disabled':'')+'>'+(n<2?'Waiting for at least 2 players':'Deal cards')+'</button>';
+  }
+  h+='</section>';
+  return h;
+}
+
+function seatsHTML(st){
+  var cid=st.phase==='play'?curId(st):null;
+  return '<div class="seats">'+st.players.map(function(p){
+    var cnt=(st.hands[p.id]||[]).length,tag='';
+    if(st.winner===p.id)tag='<span class="tag hot">Winner</span>';
+    else if(st.out===p.id)tag='<span class="tag hot">Out?</span>';
+    else if(p.id===cid)tag='<span class="tag hot">'+(st.out?'Deciding':'Turn')+'</span>';
+    return '<div class="seat'+(p.id===cid?' turn':'')+'"><span class="cnt" aria-label="'+cnt+' cards">'+cnt+'</span><span class="nm">'+esc(p.name)+(p.id===S.me?' <span class="muted">(you)</span>':'')+'</span>'+tag+'</div>';
+  }).join('')+'</div>';
+}
+
+function pileHTML(st){
+  var k=st.pile.length,h='<section class="panel" aria-live="polite"><div class="table">';
+  h+='<div class="stack'+(k?'':' empty')+'"><i></i><i></i><i></i><span class="n">'+k+'</span></div><div class="claim">';
+  if(st.phase==='over'){
+    h+='<div class="big">'+(st.winner===S.me?'You win!':esc(nameOf(st,st.winner))+' wins!')+'</div>';
+  }else if(st.claim){
+    h+='<div class="label">Calling</div><div class="big">'+MANY[st.claim]+'</div>';
+    if(st.last)h+='<div class="sub">'+esc(st.last.by===S.me?'You':nameOf(st,st.last.by))+' played '+claimText(st.last.n,st.last.rank)+'</div>';
+  }else{
+    h+='<div class="label">New round</div><div class="big">'+(curId(st)===S.me?'You lead':esc(nameOf(st,curId(st)))+' leads')+'</div><div class="sub">Any rank, Ace to 10</div>';
+  }
+  h+='</div></div>';
+  var rv=st.reveal;
+  if(rv){
+    var caller=rv.by===S.me?'You':nameOf(st,rv.by),target=rv.target===S.me?'you':nameOf(st,rv.target),loser=rv.loser===S.me?'You':nameOf(st,rv.loser);
+    h+='<div class="reveal"><div>'+esc(caller)+' called BS on '+esc(target)+' ('+claimText(rv.cards.length,rv.rank)+'):</div><div class="hand">'+
+      rv.cards.map(function(c){return cardHTML(c,{static:true,mark:fits(c,rv.rank)?'hit':'miss'})}).join('')+'</div>'+
+      '<div class="verdict '+(rv.lied?'lie':'truth')+'">'+(rv.lied?'Lie!':'Truth.')+' '+esc(loser)+' picked up '+rv.took+' card'+(rv.took===1?'':'s')+'.</div></div>';
+  }
+  return h+'</section>';
+}
+
+function bsHTML(st){
+  if(st.phase!=='play'||!st.last||idx(st,S.me)<0||st.last.by===S.me)return '';
+  return '<button class="bs" data-a="bs"'+(S.pending?' disabled':'')+'>Call BS<small>on '+esc(nameOf(st,st.last.by))+'\'s '+claimText(st.last.n,st.last.rank)+'</small></button>';
+}
+
+function movesHTML(st){
+  var cid=curId(st),mine=cid===S.me,n=S.sel.length,busy=!!S.pending,dis=busy?' disabled':'';
+  var h='<section class="panel">';
+  if(st.out){
+    if(mine){
+      h+='<div><b>'+esc(nameOf(st,st.out))+'</b> played their last cards. Call BS above, or accept and they win.</div>';
+      h+='<div class="row">'+(S.armed==='accept'
+        ?'<button class="btn armed" data-a="accept"'+dis+'>Tap again: '+esc(nameOf(st,st.out))+' wins</button>'
+        :'<button class="btn" data-a="accept"'+dis+'>Accept</button>')+'</div>';
+    }else if(S.me===st.out){
+      h+='<div>You\'re out of cards. If nobody calls BS, you win. <span class="muted">'+esc(nameOf(st,cid))+' decides.</span></div>';
+    }else{
+      h+='<div><b>'+esc(nameOf(st,st.out))+'</b> is out of cards. '+esc(nameOf(st,cid))+' decides, but you can call BS first.</div>';
+    }
+  }else if(mine&&!st.claim){
+    h+='<div><b>You lead.</b> Tap cards, then pick the rank you\'re calling.</div>';
+    h+='<div class="ranks" role="group" aria-label="Rank to call">'+RANKS.map(function(r){
+      return '<button data-a="rank" data-r="'+r+'" class="'+(S.rank===r?'on':'')+'" aria-pressed="'+(S.rank===r)+'">'+r+'</button>';
+    }).join('')+'</div>';
+    var ready=n>0&&S.rank;
+    h+='<button class="btn primary" data-a="play"'+(ready&&!busy?'':' disabled')+'>'+
+      (busy?'Sending…':n===0?'Pick cards to play':!S.rank?'Pick a rank':'Play '+claimText(n,S.rank))+'</button>';
+  }else if(mine){
+    h+='<div><b>Your turn.</b> Play '+MANY[st.claim]+' (or bluff), concede, or call BS.</div>';
+    h+='<div class="row"><button class="btn primary grow" data-a="play"'+(n>0&&!busy?'':' disabled')+'>'+(busy?'Sending…':n===0?'Pick cards to play':'Play '+claimText(n,st.claim))+'</button>'+
+      (S.armed==='concede'
+        ?'<button class="btn armed" data-a="concede"'+dis+'>Tap again: take '+st.pile.length+'</button>'
+        :'<button class="btn warn" data-a="concede"'+dis+'>Concede</button>')+'</div>';
+  }else{
+    h+='<div class="muted">Waiting for <b style="color:var(--ink)">'+esc(nameOf(st,cid))+'</b>'+(st.claim?' to play '+MANY[st.claim]+'.':' to lead.')+'</div>';
+  }
+  return h+'</section>';
+}
+
+function handHTML(st){
+  var hand=sortCards(st.hands[S.me]||[]);
+  var canPick=st.phase==='play'&&!st.out&&curId(st)===S.me;
+  var h='<section class="panel"><div class="handhead"><div class="label">Your hand · '+hand.length+'</div>';
+  if(canPick){
+    h+='<div class="row">';
+    if(st.claim)h+='<button class="btn small" data-a="match">Select '+MANY[st.claim]+' + wilds</button>';
+    if(S.sel.length)h+='<button class="btn small" data-a="clear">Clear</button>';
+    h+='</div>';
+  }
+  h+='</div>';
+  if(!hand.length)h+='<p class="muted" style="margin:0">No cards.</p>';
+  else h+='<div class="hand">'+hand.map(function(c){
+    return canPick?cardHTML(c,{sel:S.sel.indexOf(c)>=0}):cardHTML(c,{static:true});
+  }).join('')+'</div>';
+  if(!canPick&&st.phase==='play'&&!st.out)h+='<p class="muted" style="margin:0">You can pick cards on your turn.</p>';
+  return h+'</section>';
+}
+
+function overHTML(st){
+  if(idx(st,S.me)<0)return '';
+  var busy=S.pending?' disabled':'';
+  return '<section class="panel"><div class="row"><button class="btn primary grow" data-a="start"'+busy+'>Deal again</button>'+
+    '<button class="btn" data-a="lobby"'+busy+'>Back to lobby</button></div></section>';
+}
+
+function logHTML(st){
+  if(!st.log||!st.log.length)return '';
+  return '<details class="panel log" data-d="log"'+(S.logOpen?' open':'')+'><summary>Table log</summary><ul>'+
+    st.log.slice(-14).reverse().map(function(t){return '<li>'+esc(t)+'</li>'}).join('')+'</ul></details>';
+}
+
+function statusHTML(st){
+  var h='';
+  if(S.everConnected&&!S.connected)h+='<section class="panel notice">Reconnecting…</section>';
+  if(S.hostOff&&st){
+    var seated=idx(st,S.me)>=0;
+    h+='<section class="panel notice"><div><b>Waiting for '+esc(nameOf(st,st.hostId))+'\'s phone.</b> It runs the table, so it needs this page open. Their screen may be locked.</div>'+
+      (seated?'<button class="btn" data-a="takeover">Run the table from my phone instead</button>':'')+'</section>';
+  }
+  if(S.isHost&&st&&st.phase!=='over')h+='<p class="muted hostnote">Your phone is running this table. Keep this page open.</p>';
+  return h;
+}
+
+function view(){
+  if(S.screen==='home')return homeHTML();
+  var st=S.st;
+  if(S.noServer&&!st){
+    return header(null)+'<section class="panel"><b>Can\'t reach the game server.</b><span class="muted">Check your internet connection, then reload.</span><button class="btn" data-a="reload">Reload</button></section>'+rulesHTML();
+  }
+  if(S.notFound&&!st){
+    return header(null)+'<section class="panel"><b>Table '+esc(S.room)+' not found.</b><span class="muted">Check the link, or start a new table.</span><button class="btn primary" data-a="home">Start a new table</button></section>'+rulesHTML();
+  }
+  if(!st){
+    return header(null)+'<section class="panel muted">Finding table '+esc(S.room)+'…</section>'+rulesHTML();
+  }
+  if(st.phase==='lobby')return header(st)+statusHTML(st)+lobbyHTML(st)+shareHTML()+rulesHTML();
+  var seated=idx(st,S.me)>=0;
+  var h=header(st)+statusHTML(st)+seatsHTML(st)+pileHTML(st);
+  if(st.phase==='over')return h+overHTML(st)+(seated?handHTML(st):'')+logHTML(st)+rulesHTML();
+  h+=bsHTML(st);
+  if(seated)h+=movesHTML(st)+handHTML(st);
+  else h+='<section class="panel muted">A game is running. You can sit down for the next one.</section>';
+  return h+logHTML(st)+rulesHTML();
+}
+
+function render(){
+  var app=document.getElementById('app');
+  var ae=document.activeElement,fid=ae&&(ae.id==='nameInput'||ae.id==='codeInput')?ae.id:null;
+  app.innerHTML=view();
+  if(fid){var i=document.getElementById(fid);if(i){i.focus();var L=i.value.length;try{i.setSelectionRange(L,L)}catch(e){}}}
+}
+
+/* ---------- events ---------- */
+document.addEventListener('input',function(e){
+  if(e.target.id==='nameInput')S.nameDraft=e.target.value;
+  if(e.target.id==='codeInput')S.codeDraft=e.target.value;
+});
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter')return;
+  if(e.target.id==='nameInput'){e.preventDefault();doJoin()}
+  if(e.target.id==='codeInput'){e.preventDefault();doJoinCode()}
+});
+document.addEventListener('toggle',function(e){var d=e.target&&e.target.dataset&&e.target.dataset.d;if(d==='rules')S.rulesOpen=e.target.open;if(d==='log')S.logOpen=e.target.open},true);
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState!=='visible')return;
+  wake();
+  if(S.client&&!S.client.connected&&!S.client.reconnecting){try{S.client.reconnect()}catch(e){}}
+});
+
+function doJoin(){
+  var nm=S.nameDraft;
+  send('join',[nm],null,function(){lsSet('cbs-name',cleanName(nm))});
+}
+function parseRoom(s){
+  var m=String(s||'').trim().replace(/^.*#/,'').toUpperCase().match(/^([A-Z0-9]{4,8})(?:-(\d))?$/);
+  if(!m)return null;
+  var b=m[2]?Number(m[2])-1:0;
+  if(b<0||b>=BROKERS.length)b=0;
+  return {code:m[1],broker:b};
+}
+function doJoinCode(){
+  var r=parseRoom(S.codeDraft);
+  if(!r){toast('That code doesn\'t look right. It\'s 6 letters and numbers.');return}
+  enterRoom(r.code,r.broker,false);
+}
+function copyLink(){
+  var url=roomUrl(),inp=document.getElementById('linkInput');
+  var fallback=function(){if(inp){inp.focus();inp.select()}toast('Link selected. Copy it from the box.')};
+  try{navigator.clipboard.writeText(url).then(function(){toast('Link copied. Paste it in a text.')},fallback)}catch(e){fallback()}
+}
+
+document.addEventListener('click',function(e){
+  wake();
+  var b=e.target.closest('[data-a]');
+  if(!b||b.disabled)return;
+  var a=b.dataset.a,st=S.st,seq=st?st.seq:null;
+  if(a!=='end'&&a!=='concede'&&a!=='accept'&&S.armed){S.armed=null;clearTimeout(S.armTimer)}
+  switch(a){
+    case 'create':enterRoom(rid(6),0,true);break;
+    case 'joincode':doJoinCode();break;
+    case 'home':history.replaceState(null,'',location.pathname);S.screen='home';if(S.client){try{S.client.end(true)}catch(x){}S.client=null}clearTimers();render();break;
+    case 'reload':location.reload();break;
+    case 'share':
+      navigator.share({title:'Chinese BS',text:'Join my Chinese BS table',url:roomUrl()}).catch(function(){});break;
+    case 'copy':copyLink();break;
+    case 'takeover':takeOver();break;
+    case 'card':
+      var c=b.dataset.c,i=S.sel.indexOf(c);
+      if(i>=0)S.sel.splice(i,1);else S.sel.push(c);
+      render();break;
+    case 'rank':S.rank=b.dataset.r;render();break;
+    case 'match':S.sel=(st.hands[S.me]||[]).filter(function(x){return fits(x,st.claim)});render();break;
+    case 'clear':S.sel=[];render();break;
+    case 'join':doJoin();break;
+    case 'leave':send('leave',[]);break;
+    case 'remove':send('remove',[b.dataset.id]);break;
+    case 'opt':
+      var k=b.dataset.k,v=b.dataset.v;
+      send('option',[k,k==='decks'?Number(v):v==='1']);break;
+    case 'start':S.sel=[];S.rank=null;send('start',[],seq);break;
+    case 'play':
+      send('play',[S.sel.slice(),S.rank],seq,function(){S.sel=[];S.rank=null});break;
+    case 'concede':
+      if(S.armed!=='concede'){arm('concede');break}
+      S.armed=null;send('concede',[],seq);break;
+    case 'accept':
+      if(S.armed!=='accept'){arm('accept');break}
+      S.armed=null;send('accept',[],seq);break;
+    case 'bs':send('bs',[],seq);break;
+    case 'end':
+      if(S.armed!=='end'){arm('end');break}
+      S.armed=null;send('reset',[]);break;
+    case 'lobby':send('reset',[],seq);break;
+  }
+});
+
+window.addEventListener('hashchange',function(){
+  var r=parseRoom(location.hash);
+  if(r&&!(S.screen==='room'&&r.code===S.room))enterRoom(r.code,r.broker,false);
+});
+
+(function init(){
+  var r=parseRoom(location.hash);
+  if(r)enterRoom(r.code,r.broker,false);else render();
+})();
+
+})();
+</script>
+</body>
+</html>
